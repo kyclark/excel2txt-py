@@ -1,7 +1,0 @@
-README.md
-setup.py
-excel2txt.egg-info/PKG-INFO
-excel2txt.egg-info/SOURCES.txt
-excel2txt.egg-info/dependency_links.txt
-excel2txt.egg-info/entry_points.txt
-excel2txt.egg-info/top_level.txt
