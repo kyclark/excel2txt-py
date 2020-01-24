@@ -41,6 +41,11 @@ def get_args():
                         type=str,
                         default='\t')
 
+    parser.add_argument('-D',
+                        '--mkdirs',
+                        help='Create directories for output files',
+                        action='store_true')
+
     parser.add_argument('-n',
                         '--normalize',
                         help='Normalize headers',
@@ -65,9 +70,11 @@ def main():
 
     for i, fh in enumerate(args.file, start=1):
         print(f'{i:3}: {fh.name}')
-        process(fh, args)
+        if not process(fh, args):
+            print(f'Something amiss with {fh.name}', file=sys.stderr)
 
     print('Done.')
+    return 0
 
 
 # --------------------------------------------------
@@ -86,7 +93,13 @@ def process(fh, args):
             continue
 
         out_file = '__'.join([basename, ws_name]) + '.txt'
-        out_path = os.path.join(args.outdir, out_file)
+        out_dir = args.outdir
+        if args.mkdirs:
+            out_dir = os.path.join(out_dir, basename)
+            if not os.path.isdir(out_dir):
+                os.makedirs(out_dir)
+
+        out_path = os.path.join(out_dir, out_file)
 
         with open(out_path, 'wt') as out_fh:
             rows = list(ws.iter_rows(values_only=True))
@@ -97,7 +110,7 @@ def process(fh, args):
             for i, row in enumerate(rows):
                 if i == 0:
                     headers = list(row)
-                    while headers[-1] is None:
+                    while headers and headers[-1] is None:
                         headers.pop()
                     row = list(map(normalize, headers))
 
@@ -108,13 +121,19 @@ def process(fh, args):
 
                     out_fh.write(delimiter.join(map(cell_norm, data)) + '\n')
 
+        # Remove empty worksheets
+        if os.path.getsize(out_path) == 0:
+            os.remove(out_path)
+
+    return True
+
 
 # --------------------------------------------------
 def normalize(s: Optional[str]) -> str:
     """Remove funky bits from strings"""
 
     return '' if s is None else re.sub('[^a-z0-9_]', '',
-                                       re.sub('[\s-]+', '_', s.lower()))
+                                       re.sub(r'[\s-]+', '_', s.lower()))
 
 
 # --------------------------------------------------

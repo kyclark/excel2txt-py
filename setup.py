@@ -5,13 +5,14 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name='excel2txt',
-    version='0.1.2',
+    version='0.1.3',
     author='Ken Youens-Clark',
     author_email='kyclark@gmail.com',
     description='Convert Excel files to delimited text',
     long_description=long_description,
     long_description_content_type='text/markdown',
     url='https://github.com/kyclark/excel2txt-py',
+    packages='.',
     entry_points={
         'console_scripts': [
             'excel2txt=excel2txt:main',
