@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name='excel2txt',
-    version='0.1.3',
+    version='0.2.0',
     author='Ken Youens-Clark',
     author_email='kyclark@gmail.com',
     description='Convert Excel files to delimited text',

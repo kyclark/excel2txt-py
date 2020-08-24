@@ -6,18 +6,30 @@ Purpose: Convert Excel files to delimited text
 """
 
 import argparse
+import csv
 import os
 import re
 import sys
 from openpyxl import load_workbook
-from typing import Any, Optional
+from typing import Any, Optional, NamedTuple, TextIO, List
+
+VERSION = '0.2.0'
+
+
+class Args(NamedTuple):
+    file: List[TextIO]
+    out_dir: str
+    delimiter: str
+    make_dirs: bool
+    normalize_headers: bool
 
 
 # --------------------------------------------------
-def get_args():
-    """Get command-line arguments"""
+def get_args() -> Args:
+    """ Get command-line arguments """
 
     parser = argparse.ArgumentParser(
+        prog='excel2txt',
         description='Convert Excel files to delimited text',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
@@ -43,7 +55,7 @@ def get_args():
 
     parser.add_argument('-D',
                         '--mkdirs',
-                        help='Create directories for output files',
+                        help='Create separate directories for output files',
                         action='store_true')
 
     parser.add_argument('-n',
@@ -51,53 +63,60 @@ def get_args():
                         help='Normalize headers',
                         action='store_true')
 
+    parser.add_argument('--version',
+                        action='version',
+                        version=f'%(prog)s {VERSION}')
+
     args = parser.parse_args()
 
     if not os.path.isabs(args.outdir):
         args.outdir = os.path.abspath(args.outdir)
 
-    return args
+    if not os.path.isdir(args.outdir):
+        os.makedirs(args.outdir)
+
+    return Args(file=args.file,
+                out_dir=args.outdir,
+                delimiter=args.delimiter,
+                make_dirs=args.mkdirs,
+                normalize_headers=args.normalize)
 
 
 # --------------------------------------------------
-def main():
-    """Make a jazz noise here"""
+def main() -> None:
+    """ Make a jazz noise here """
 
     args = get_args()
-
-    if not os.path.isdir(args.outdir):
-        os.makedirs(args.outdir)
 
     for i, fh in enumerate(args.file, start=1):
         print(f'{i:3}: {fh.name}')
         if not process(fh, args):
             print(f'Something amiss with {fh.name}', file=sys.stderr)
 
-    print('Done.')
-    return 0
+    print(f'Done, see output in "{args.out_dir}".')
 
 
 # --------------------------------------------------
-def process(fh, args):
-    """Process a file"""
+def process(fh: TextIO, args: Args) -> bool:
+    """ Process a file """
 
     file = fh.name
     fh.close()
     basename, _ = os.path.splitext(os.path.basename(file))
     wb = load_workbook(file)
-    delimiter = args.delimiter
 
     for ws in wb:
         ws_name = normalize(ws.title)
         if not ws_name:
             continue
 
-        out_file = '__'.join([basename, ws_name]) + '.txt'
-        out_dir = args.outdir
-        if args.mkdirs:
-            out_dir = os.path.join(out_dir, basename)
-            if not os.path.isdir(out_dir):
-                os.makedirs(out_dir)
+        out_ext = '.csv' if args.delimiter == ',' else '.txt'
+        out_file = '__'.join([basename, ws_name]) + out_ext
+        out_dir = os.path.join(args.out_dir,
+                               basename) if args.make_dirs else args.out_dir
+
+        if not os.path.isdir(out_dir):
+            os.makedirs(out_dir)
 
         out_path = os.path.join(out_dir, out_file)
 
@@ -106,20 +125,25 @@ def process(fh, args):
             if not rows:
                 continue
 
-            headers = []
-            for i, row in enumerate(rows):
-                if i == 0:
-                    headers = list(row)
-                    while headers and headers[-1] is None:
-                        headers.pop()
-                    row = list(map(normalize, headers))
+            # Clean up headers, get rid of bogus/empty columns
+            fieldnames = list(rows.pop(0))
+            if args.normalize_headers:
+                fieldnames = list(map(normalize, fieldnames))
+            while fieldnames and fieldnames[-1] is None:
+                fieldnames.pop()
 
-                if headers:
-                    data = row[:len(headers) - 1]
-                    if all(map(lambda x: x is None, data)):
-                        break
+            writer = csv.DictWriter(out_fh,
+                                    fieldnames=fieldnames,
+                                    delimiter=args.delimiter)
+            writer.writeheader()
 
-                    out_fh.write(delimiter.join(map(cell_norm, data)) + '\n')
+            for row in rows:
+                # Only use defined columns
+                data = list(map(cell_norm, row[:len(fieldnames)]))
+
+                # Skip empty rows
+                if any(filter(None, data)):
+                    writer.writerow(dict(zip(fieldnames, data)))
 
         # Remove empty worksheets
         if os.path.getsize(out_path) == 0:
@@ -130,37 +154,30 @@ def process(fh, args):
 
 # --------------------------------------------------
 def normalize(s: Optional[str]) -> str:
-    """Remove funky bits from strings"""
+    """
+    Remove funky bits from strings, change CamelCase to snake_case
+    """
 
-    return '' if s is None else re.sub('[^a-z0-9_]', '',
-                                       re.sub(r'[\s-]+', '_', s.lower()))
+    if s:
+        while True:
+            match = re.search('(.*)([a-z])([A-Z].*)', s)
+            if match:
+                s = match.group(1) + match.group(2) + '_' + match.group(3)
+            else:
+                break
 
-
-# --------------------------------------------------
-def test_normalize():
-    """Test normalize"""
-
-    assert normalize(None) == ''
-    assert normalize('FOO') == 'foo'
-    assert normalize('FOO  BAR') == 'foo_bar'
-    assert normalize('foo-b*!a,r') == 'foo_bar'
+        s = re.sub(r'\s+', '_', s.lower())
+        s = re.sub(r'[^a-z0-9_]', '', s)
+        return re.sub(r'[_]+', '_', s)
+    else:
+        return ''
 
 
 # --------------------------------------------------
 def cell_norm(val: Any) -> str:
-    """Normalize None/etc"""
+    """ Normalize None/etc """
 
     return '' if val is None else str(val)
-
-
-# --------------------------------------------------
-def test_cell_norm():
-    """Test cell_norm"""
-
-    assert cell_norm(None) == ''
-    assert cell_norm(400) == '400'
-    assert cell_norm(400.3) == '400.3'
-    assert cell_norm('foo') == 'foo'
 
 
 # --------------------------------------------------

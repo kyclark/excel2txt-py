@@ -15,3 +15,6 @@ test_install:
 
 up:
 	twine upload dist/*
+
+test:
+	python3 -m pytest -vx
