@@ -13,7 +13,7 @@ import sys
 from openpyxl import load_workbook
 from typing import Any, Optional, NamedTuple, TextIO, List
 
-VERSION = '0.2.0'
+VERSION = '0.2.1'
 
 
 class Args(NamedTuple):

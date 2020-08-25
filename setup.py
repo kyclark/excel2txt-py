@@ -1,11 +1,12 @@
 import setuptools
+import excel2txt
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
     name='excel2txt',
-    version='0.2.0',
+    version=excel2txt.VERSION,
     author='Ken Youens-Clark',
     author_email='kyclark@gmail.com',
     description='Convert Excel files to delimited text',
