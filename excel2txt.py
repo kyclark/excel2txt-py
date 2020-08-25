@@ -103,6 +103,7 @@ def process(fh: TextIO, args: Args) -> bool:
     file = fh.name
     fh.close()
     basename, _ = os.path.splitext(os.path.basename(file))
+    basename = normalize(basename)
     wb = load_workbook(file)
 
     for ws in wb:

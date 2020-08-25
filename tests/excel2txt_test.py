@@ -12,7 +12,7 @@ from shutil import rmtree
 
 PRG = './excel2txt.py'
 INPUT1 = './tests/test1.xlsx'
-INPUT2 = './tests/test2.xlsx'
+INPUT2 = './tests/Test 2.xlsx'
 
 
 # --------------------------------------------------
@@ -78,7 +78,7 @@ def test_input1():
         os.remove(out_file)
 
     try:
-        rv, out = getstatusoutput(f'{PRG} {INPUT1}')
+        rv, out = getstatusoutput(f'{PRG} "{INPUT1}"')
         assert rv == 0
         lines = out.splitlines()
         assert lines[-1].strip() == f'Done, see output in "{os.getcwd()}".'
@@ -105,12 +105,12 @@ def test_input2():
         rmtree(out_dir)
 
     try:
-        rv, out = getstatusoutput(f'{PRG} -d "," -o {out_dir} -n {INPUT2}')
+        rv, out = getstatusoutput(f'{PRG} -d "," -o {out_dir} -n "{INPUT2}"')
         assert rv == 0
         lines = out.splitlines()
         msg = f'Done, see output in "{os.path.abspath(out_dir)}".'
         assert lines[-1].strip() == msg
-        out_file = f'./{out_dir}/test2__sheet1.csv'
+        out_file = f'./{out_dir}/test_2__sheet1.csv'
         assert os.path.isfile(out_file)
 
         reader = csv.DictReader(open(out_file), delimiter=',')
@@ -136,7 +136,7 @@ def test_multiple_inputs():
     try:
         delimiter = random.choice(';|:')
         cmd = (f'{PRG} --delimiter "{delimiter}" --outdir {out_dir} '
-               f'--normalize --mkdirs {INPUT1} {INPUT2}')
+               f'--normalize --mkdirs "{INPUT1}" "{INPUT2}"')
         rv, out = getstatusoutput(cmd)
         assert rv == 0
 
@@ -145,7 +145,7 @@ def test_multiple_inputs():
         assert lines[-1].strip() == msg
         out_files = [
             os.path.join(out_dir, 'test1', 'test1__sheet1.txt'),
-            os.path.join(out_dir, 'test2', 'test2__sheet1.txt')
+            os.path.join(out_dir, 'test_2', 'test_2__sheet1.txt')
         ]
 
         assert all(map(os.path.isfile, out_files))
