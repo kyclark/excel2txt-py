@@ -77,7 +77,7 @@ This same normalization will be used to create the output file names so as to av
 
 ## See also
 
-csvkit, csvchk
+csvkit, [csvchk](https://github.com/kyclark/csvchk), [Rust implementation](https://github.com/kyclark/excel2txt-rust)
 
 ## Author
 
